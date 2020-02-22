@@ -1,0 +1,69 @@
+---
+title: 'Assignment: Practical Machine Learning'
+author: "David Gonzalez"
+date: "2/22/2020"
+output: 
+  html_document: 
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Prediction Assignment Writeup
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Loading necessary libraries into the environment
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(e1071)
+library(randomForest)
+set.seed(1)
+```
+
+### Reading files and removing empty fields
+
+```{r files, echo=TRUE}
+training.file <- "data/pml-training.csv"
+testing.file <- "data/pml-testing.csv"
+training.data.raw <- read.csv(training.file, na.strings = c("NA","#DIV/0!",""))
+testing.data.raw <- read.csv(testing.file, na.strings = c("NA","#DIV/0!",""))
+```
+
+### Remove unnecesary columns
+
+```{r echo=TRUE}
+training.data.clean <- training.data.raw[,8:length(colnames(training.data.raw))]
+testing.data.clean <- testing.data.raw[,8:length(colnames(testing.data.raw))]
+training.data.clean <- training.data.clean[, colSums(is.na(training.data.clean)) == 0]
+testing.data.clean <- testing.data.clean[, colSums(is.na(testing.data.clean)) == 0]
+nzv <- nearZeroVar(training.data.clean,saveMetrics=TRUE)
+zero.var.ind <- sum(nzv$nzv)
+if ((zero.var.ind>0)) {
+training.data.clean <- training.data.clean[,nzv$nzv==FALSE]
+}
+```
+
+### Validate
+
+```{r echo=TRUE}
+in.training <- createDataPartition(training.data.clean$classe, p=0.70, list=F)
+training.data.final <- training.data.clean[in.training, ]
+validate.data.final <- training.data.clean[-in.training, ]
+```
+
+### Model
+```{r echo=TRUE}
+control.parms <- trainControl(method="cv", 5)
+rf.model <- train(classe ~ ., data=training.data.final, method="rf",
+trControl=control.parms, ntree=251)
+rf.model
+```
