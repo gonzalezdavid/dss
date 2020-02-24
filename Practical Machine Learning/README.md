@@ -1,0 +1,111 @@
+## Prediction Assignment Writeup
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+### Human Activity Recognition
+
+Human Activity Recognition - HAR - has emerged as a key research area in the last years and is gaining increasing attention by the pervasive computing research community (see picture below, that illustrates the increasing number of publications in HAR with wearable accelerometers), especially for the development of context-aware systems. There are many potential applications for HAR, like: elderly monitoring, life log systems for monitoring energy expenditure and for supporting weight-loss programs, and digital assistants for weight lifting exercises.
+
+### Loading necessary libraries into the environment
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(e1071)
+library(randomForest)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+set.seed(1)
+```
+
+### Reading files and removing empty fields
+
+In this section the files are loaded into the work environment and we clean both datasets to eliminate the fields that are empty and thus prevent them from being processed.
+
+```{r files, echo=TRUE}
+training.file <- "data/pml-training.csv"
+testing.file <- "data/pml-testing.csv"
+training.data.raw <- read.csv(training.file, na.strings = c("NA","#DIV/0!",""))
+testing.data.raw <- read.csv(testing.file, na.strings = c("NA","#DIV/0!",""))
+```
+
+### Remove unnecesary columns ans using nZv
+
+Here, it's necessary to use nZv and diagnoses predictors that have one unique value. Also, it's not necessary process the first 8 columns into the data set, so they were removed.
+
+```{r echo=TRUE}
+training.data.clean <- training.data.raw[,8:length(colnames(training.data.raw))]
+testing.data.clean <- testing.data.raw[,8:length(colnames(testing.data.raw))]
+training.data.clean <- training.data.clean[, colSums(is.na(training.data.clean)) == 0]
+testing.data.clean <- testing.data.clean[, colSums(is.na(testing.data.clean)) == 0]
+nzv <- nearZeroVar(training.data.clean,saveMetrics=TRUE)
+zero.var.ind <- sum(nzv$nzv)
+if ((zero.var.ind>0)) {
+training.data.clean <- training.data.clean[,nzv$nzv==FALSE]
+}
+```
+
+### Validate od Dataset
+
+The training dataset was divided into two. The first is a training dataset with 70% of the data which is used to train the model. The second dataset is a validation part used to assess model performance.
+
+```{r echo=TRUE}
+in.training <- createDataPartition(training.data.clean$classe, p=0.70, list=F)
+training.data.final <- training.data.clean[in.training, ]
+validate.data.final <- training.data.clean[-in.training, ]
+```
+
+## Model
+
+### Training in the model
+
+Use RandomForest to combine the output of multiple decision trees and then finally come up with its own output. In 5-fold cross-validation, the original sample is randomly partitioned into 5 equal sized sub-samples. A single sample is retained for validation and the other sub-samples are used as training data.
+
+
+```{r echo=TRUE}
+control.parms <- trainControl(method="cv", 5)
+rf.model <- train(classe ~ ., data=training.data.final, method="rf",
+trControl=control.parms, ntree=251)
+rf.model
+```
+
+### Performance Estimation
+
+To predict the accuracy and general error of this sample, the training data model is adjusted and a test against the clean validation data is performed. After this they are compared with the real values.
+
+``` {r echo=TRUE}
+rf.predict <- predict(rf.model, validate.data.final)
+confusionMatrix(validate.data.final$classe, rf.predict)
+```
+
+```{r echo=TRUE}
+accuracy <- postResample(rf.predict, validate.data.final$classe)
+acc.out <- accuracy[1]
+overall.ose <- 
+1 - as.numeric(confusionMatrix(validate.data.final$classe, rf.predict)
+$overall[1])
+```
+
+### Accuracy and Sample Error
+
+The accuracy measurement for this model is **`r acc.out`** and the Overall Out-of-Sample error is **`r overall.ose`**.
+
+## The model on the Testing Data
+
+```{r echo=TRUE}
+results <- predict(rf.model, 
+testing.data.clean[, -length(names(testing.data.clean))])
+results
+```
+
+### Decision Tree
+
+Below, it was used the library rpart.Plot to generate a decision tree from the model.
+
+``` {r echo=TRUE, warning=FALSE}
+treeModel <- rpart(classe ~ ., data=training.data.final, method="class")
+fancyRpartPlot(treeModel)
+```

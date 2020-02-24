@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/577946/11909205681f41e3996d3ed228f8e93e
+bundleId: https://api.rpubs.com/api/v1/document/577946/11909205681f41e3996d3ed228f8e93e
+url: http://rpubs.com/gonzalezjuand/577946
+when: 1582553544.90005
